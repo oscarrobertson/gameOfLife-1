@@ -6,8 +6,8 @@ typedef unsigned char uchar;
 #define IMHT 16
 #define IMWD 16
 
-char infname[] = "test9.pgm";     //put your input image path here, absolute path
-char outfname[] = "test10.pgm"; //put your output image path here, absolute path
+char infname[] = "test7.pgm";     //put your input image path here, absolute path
+char outfname[] = "test21.pgm"; //put your output image path here, absolute path
 
 void printArray(uchar array[], int arraysize){
   printf("[");
@@ -224,25 +224,25 @@ void distributor(chanend c_in, chanend toWork[], chanend toStore[])
     //printf("%d\n",lineNumber);
     select {
       case toWork[0] :> singleWorkerStatus:
-        //printf("worker[%d]\n",0);
+        printf("worker[%d]\n",0);
         if (singleWorkerStatus == 1){
             sendWork(toWork[0],above,calculate,below,lineNumber,IMWD);
         }
         break;
       case toWork[1] :> singleWorkerStatus:
-      //printf("worker[%d]\n",1);
+      printf("worker[%d]\n",1);
         if (singleWorkerStatus == 1){
             sendWork(toWork[1],above,calculate,below,lineNumber,IMWD);
         }
         break;
       case toWork[2] :> singleWorkerStatus:
-      //printf("worker[%d]\n",2);
+      printf("worker[%d]\n",2);
         if (singleWorkerStatus == 1){
             sendWork(toWork[2],above,calculate,below,lineNumber,IMWD);
         }
         break;
       case toWork[3] :> singleWorkerStatus:
-      //printf("worker[%d]\n",3);
+      printf("worker[%d]\n",3);
         if (singleWorkerStatus == 1){
             sendWork(toWork[3],above,calculate,below,lineNumber,IMWD);
         }
@@ -338,16 +338,14 @@ void store(chanend fromHarvester,chanend fromDistributor) {
       //1 means harvester wants info to print out
       //2 means harvester will send info into the store
       if (harvestInstruction == 2){
-        for (int i=0; i<IMHT/4; i++){
-          fromHarvester :> rowNumber;
-          store[storeLocation][0] = (uchar) rowNumber;
-          //just dont even ask why this cant be it's own variable
-          for(i=1;i<=IMWD;i++){
+        fromHarvester :> rowNumber;
+        store[storeLocation][0] = (uchar) rowNumber;
+        //just dont even ask why this cant be it's own variable
+        for(int i=1;i<=IMWD;i++){
 
-              fromHarvester :> store[storeLocation][i];
-          }
-          storeLocation++;
+            fromHarvester :> store[storeLocation][i];
         }
+        storeLocation++;
       }
       else if (harvestInstruction == 1) {
           //harvester tells the worker which row it wants
