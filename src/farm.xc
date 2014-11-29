@@ -6,8 +6,8 @@ typedef unsigned char uchar;
 #define IMHT 16
 #define IMWD 16
 
-char infname[] = "test7.pgm";     //put your input image path here, absolute path
-char outfname[] = "test8.pgm"; //put your output image path here, absolute path
+char infname[] = "test9.pgm";     //put your input image path here, absolute path
+char outfname[] = "test10.pgm"; //put your output image path here, absolute path
 
 void printArray(uchar array[], int arraysize){
   printf("[");
@@ -203,7 +203,7 @@ void sendWork(chanend toWork, uchar above[], uchar calculate[], uchar below[], i
   return;
 }
 
-void distributor(chanend c_in, chanend toWork[])
+void distributor(chanend c_in, chanend toWork[], chanend toStore[])
 {
   uchar above[IMWD] = {0};
   uchar below[IMWD];
@@ -317,19 +317,27 @@ void harvester(streaming chanend workToHarvester[], chanend harvesterToStore[], 
 }
 
 //from distib needs to be added so we can easily cycle into another round
-void store(chanend fromHarvester/*,chanend fromDistributor*/) {
+void store(chanend fromHarvester,chanend fromDistributor) {
   //change to make sure it always has space
   uchar store[IMHT/4][IMWD+1];
-  int instruction;
+  int harvestInstruction;
+  int distribInstruction;
   int rowNumber;
   int storeLocation = 0;
   while(1){
+      //so harvester instructions only proc if a message is sent from harvester
+      harvestInstruction = -1;
+      select {
+        case fromHarvester :> harvestInstruction:
+          break;
+        case fromDistributor :> distribInstruction:
+          break;
+      }
       //instruction from harvester
       //0 means terminate
       //1 means harvester wants info to print out
       //2 means harvester will send info into the store
-      fromHarvester :> instruction;
-      if (instruction == 2){
+      if (harvestInstruction == 2){
         for (int i=0; i<IMHT/4; i++){
           fromHarvester :> rowNumber;
           store[storeLocation][0] = (uchar) rowNumber;
@@ -341,12 +349,12 @@ void store(chanend fromHarvester/*,chanend fromDistributor*/) {
           storeLocation++;
         }
       }
-      else if (instruction == 1) {
+      else if (harvestInstruction == 1) {
           //harvester tells the worker which row it wants
-          fromHarvester :> instruction;
+          fromHarvester :> rowNumber;
           uchar found = 0;
           for (int i=0; i<IMHT/4; i++){
-              if (store[i][0] == instruction){
+              if (store[i][0] == rowNumber){
                   for (int j=1;j<=IMWD;j++){
                       fromHarvester <: store[i][j];
                   }
@@ -362,7 +370,8 @@ void store(chanend fromHarvester/*,chanend fromDistributor*/) {
           }
           else found = 0;
       }
-      else if (instruction == 0) break;
+      else if (harvestInstruction == 0) break;
+      //
 
 
   }
@@ -407,20 +416,21 @@ int main()
   streaming chan workToHarvester[4];
   chan harvesterToOut;
   chan harvesterToStore[4];
+  chan distribToStore[4];
   par //extend/change this par statement
   {
     on stdcore[1]: DataInStream( infname, c_inIO );
-    on stdcore[0]: distributor( c_inIO, distToWork);
+    on stdcore[0]: distributor( c_inIO, distToWork,distribToStore);
     on stdcore[2]: DataOutStream( outfname, harvesterToOut );
     on stdcore[3]: harvester(workToHarvester,harvesterToStore,harvesterToOut);
     on stdcore[0]: worker(distToWork[0],workToHarvester[0]);
     on stdcore[1]: worker(distToWork[1],workToHarvester[1]);
     on stdcore[2]: worker(distToWork[2],workToHarvester[2]);
     on stdcore[3]: worker(distToWork[3],workToHarvester[3]);
-    on stdcore[0]: store(harvesterToStore[0]);
-    on stdcore[1]: store(harvesterToStore[1]);
-    on stdcore[2]: store(harvesterToStore[2]);
-    on stdcore[3]: store(harvesterToStore[3]);
+    on stdcore[0]: store(harvesterToStore[0],distribToStore[0]);
+    on stdcore[1]: store(harvesterToStore[1],distribToStore[1]);
+    on stdcore[2]: store(harvesterToStore[2],distribToStore[2]);
+    on stdcore[3]: store(harvesterToStore[3],distribToStore[3]);
   }
   //printf( "Main:Done...\n" );
   return 0;
